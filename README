@@ -1,0 +1,262 @@
+======================================================
+	HOMEWORK di OS II - CHATROOM 
+
+	by Gabriele Rodonò, 1916563
+======================================================
+
+Questo file contiene informazioni sui seguenti punti:
+
+- istruzioni per l'uso dei programmi client.out / server.out
+
+- descrizione delle funzionalità implementate
+
+- descrizione del contenuto del file strutture.h
+
+- descrizione dei test effettuati
+
+
+======================================================
+Istruzioni per l'uso dei programmi client.out / server.out
+
+
+NOTA: Per compilare i due programmi ed ottenere i file eseguibili server.out e client.out 
+      è possibile usare il comando make.
+
+
+- client.out:
+
+Eseguire il programma fornendo l'ip della macchina a cui connettersi che ospita il server e la porta TCP.
+Per eseguirlo sulla stessa macchina che ospita il server:
+
+	./client.out localhost <porta>
+
+Per prima cosa verrà richiesto il nome utente che vuole mostrare agli altri utenti connessioni nel server.
+Tale nome, deve avere una lunghezza compresa tra 2 e 20 caratteri.
+Se dovesse decidere di uscire in questa fase, può digitare al posto del nome i comandi "exit" oppure EXIT.
+In questa fase NON può uscire dall'esecuzione del client con un SIGINT.
+
+Ogni client connesso al server ha un proprio file log locale che riporta:
+
+	- l'ora di ingresso e di uscita dal server
+
+	- tutti i messaggi con la relativa ora inviati dall'utente
+
+Tale file dell'utente è riconoscibile dagli altri perchè si chiama:
+
+		nomeUtente_logLocale.txt
+
+
+- server.out:
+
+Eseguire il programma fornendo la porta TCP su cui il server si metterà in ascolto.
+Per eseguirlo:
+
+	./server.out <porta>
+
+
+Una volta aperto il server, viene creato un file chiamato logGlobale.txt che conterrà tutte le informazioni e tutti
+i messaggi scambiati durante l'ultimo periodo di apertura del server.
+
+
+
+NOTA: per eliminare in un solo colpo tutti questi file di log che terminano con estensione .txt
+      è possibile utilizzare il comando:
+
+		make clean
+
+
+--> Per utilizzare la chatroom con client e server sulla stessa macchina:
+
+	- eseguire da terminale server.out secondo le istruzioni fornite sopra
+ 
+	- eseguire su diversi terminali il programma client.out secondo le istruzioni fornite sopra
+
+	- da questo momento è possibile scambiare e ricevere messaggi tra tutti i cient connessi e avere una visuale complessiva
+	  sul terminale su cui è stato lanciato server.out
+
+
+======================================================
+Descrizione delle funzionalità implementate
+
+
+Dopo aver lanciato i programmi client.out e server.out, si instaurerà la connessione tra client e server facendo uso delle socket.
+Si verrà informati durante la connessione se qualcosa ha generato un errore, in tal caso è necessario rieseguire i programmi.
+
+
+Nella CHATROOM, in ogni istante può esistere al più uno e un solo client con un certo nome. 
+Ossia, non è possibile entrare nella chat con lo stesso nome usato da un client precedentemente.
+Verrà chiesto all'ingresso nella CHATROOM di reinserire il proprio nome fino all'inserimento di un nome valido.
+
+
+Ogni client che viene creato ha a disposizione 3 thread, i quali rispettivamente si occupano di:
+
+	- inviare messaggi al server e aggiornare il log locale
+
+	- ricevere messaggi dal server (che sono stati inviati da altri client)
+
+	- ricevere le comunicazioni dal server (come la comunicazione di CHIUSURA_SERVER) e 
+	  aggiornare il log locale con tali comunicazioni
+
+
+Il server disporrà invece di un thread per ogni client connesso.
+Esso si occuperà di:
+
+	- gestire la comunicazione con il client specifico di cui si occupa
+
+	- aggiornare il log globale con i messaggi ricevuti dal client di cui si occupa
+
+
+
+Al momento dell'apertura del server, verrà visualizzato sullo stdout e nel logGlobale.txt un messaggio
+che indica l'apertura del server.
+
+
+Di default, il server è predisposto per avere una coda in grado di ospitare 2 client, che potranno comunicare tra loro.
+Al momento di ulteriori richieste di connessione da parte di altri client, la coda del server verrà estesa dinamicamente
+(procedendo per raddoppio dei client ospitabili) per risparmiare memoria.
+
+
+ES:
+	- 2 client connessi: coda di dimensione 2
+
+	- 3 client connessi: coda di dimensione 4
+
+	- 4 client connessi: coda di dimensione 4
+
+	- 5 client connessi: coda di dimensione 8
+
+	- e cosi via...
+
+NOTA: la scelta di avere una coda dei client connessi di default lunga 2 è stata presa per testare meglio la 
+      riallocazione dinamica di tale area di memoria. Tuttavia è possibile estendere questa dimensione di default cambiando il 
+      valore associato alla costante DFL_CLIENTS presente nel file strutture.h 
+
+
+Al momento della riuscita connessione del client, verrà visulaizzato sul terminale del client in questione un messaggio che gli dà
+il benvenuto nel server e verrà scritto sul proprio logLocale.txt un messaggio che riporta l'ora di ingresso nel server.
+
+
+Ogni volta che un nuovo client si connette al server:
+
+	- tutti i client già connessi vengono informati dell'ingresso del nuovo utente e dell'ora in cui ciò è avvenuto.
+
+	- sullo stdout e sul logGlobale.txt del server, verrà visualizzato il messaggio di ingresso e l'ora.
+
+
+Ogni messaggio (eccetto quelli di comunicazione diretta con il server per esprimere richieste, es: exit o EXIT) verrà:
+
+	- inviato a tutti i client connessi e mostrato sui rispettivi terminali
+
+	- aggiunto nel logGlobale mantenuto dal server
+
+	- aggiunto al logLocale dell'utente che ha inviato il messaggio
+
+
+L'utente client, può abbandonare la chatroom server in qualsiasi momento scrivendo in chat: exit o EXIT.
+
+
+L'utente non può chiudere il client inviandogli un SIGINT (es combinando i tasti CTRL + C ).
+Se dovesse provarci, gli verrà ricordato che per uscire deve usare gli opportuni comandi.
+
+
+Ogni client, vede sul proprio stdout lo storico dei messaggi fino ad ora ricevuti (partendo da dopo il suo ingresso nel server)
+e l'attuale orario in cui può inviare il prossimo messaggio.
+
+
+Il server verrà chiuso nel momento in cui riceverà un SIGINT (es combinando i tasti CTRL + C ).
+Questo comporta:
+
+	- l'invio della comunicazione a tutti i client connessi della chiusura del server (che verrà aggiunta in tutti i log,
+	  sia locali che globali)
+
+	- la chiusura di tutti i client connessi
+
+
+
+======================================================
+Nel file strutture.h è possibile vedere:
+
+- La definizione di 3 struct, che incapsulano informazioni riguardo:
+
+	- i client
+	- il server
+	- la coda che tiene traccia dei puntatori ai client connessi
+
+
+- La definizione di costanti utili all'esecuzione e manutenzione del codice
+
+
+- La definizione di funzioni di utilità, quali:
+
+	- una funzione per l'abbreviazione dei messaggi inviati dai client o dal server (che ha massima lunghezza MAX_LEN)
+
+	- una funzione per il calcolo dell'ora corrente in formato [ora:min:sec]
+
+	- una funzione che aggiorna i log (sia locali che globali)
+
+
+
+======================================================
+Descrizione dei test effettuati sui quali la CHATROOM funziona:
+
+
+- E' stato testato se tutti i client connessi al server ricevano tutti i messaggi degli altri utenti (escluse le richieste di uscita)
+
+
+- E' stato testato che nella CHATROOM si può entrare solamente con nomi diversi da quelli dei client che sono già connessi.
+  Verrà chiesto di reinserire il proprio nome utente fino a che non ne verrà inserito uno valido.
+
+
+- E' stato testato che per ogni utente viene creato un proprio file di logLocale che riportasse solamente i propri
+  messaggi inviati al server, e le rispettive informazioni sull'orario di connessione e uscita
+
+
+- E' stato testato che il server viene chiuso da un SIGINT, con la rispettiva comunicazione sul terminale di tutti i 
+  client connessi e la scrittura di tale messaggio su tutti i file di log locali e globale.
+
+
+- E' stato testato che l'utente non può chiudere il client inviandogli un SIGINT.
+  Gli viene ricordato che per uscire deve usare gli opportuni comandi.
+
+
+- E' stato testato che un client quando sta inserendo il proprio nome utente può abbandonare il server con exit oppure EXIT.
+  Non può in questa fase tentare di chiudere il programma tramite un SIGINT. 
+ 
+
+
+- E' stato testato che i file di log relativi a sessioni precedenti vengono effettivamente sovrascritti nel momento in cui
+  un client con un nome utente matchabile con un file nomeUtente_logLocale.txt pre-esistente si connette ad una sessione successiva della chatroom
+
+
+- Il file di LogGlobale viene sovrascritto o creato (se non esistente) ad ogni nuova sessione della chatroom
+ 
+
+- Sono stati testati i possibili fallimenti che impediscono la connessione del client al server, quali:
+
+	- un nome utente che non rispetta il vincolo di essere lungo tra 2 e 20
+	- errore nel provare a connettersi ad una porta su cui nessun server è in ascolto
+	- errore nel definire la socket	
+	- errore di connessione nella fase di connect()
+
+
+- Sono stati testati gli errori relativi all'apertura del server, in particolare:
+
+	- errore nel definire la socket
+	- errore nel fare il binding
+	- errori nell'allocare le aree di memoria che ospitano le struct relative ai my_client e alla struct my_server
+
+
+- Riallocazione dinamica della coda dei client al momento in cui la memoria precedentemente predisposta è stata riempita.
+  E' stato testato il suo funzionamento fino alla presenza simultanea di 9 client connessi (e con coda lunga 16).
+
+
+
+
+
+
+
+
+
+
+
+
